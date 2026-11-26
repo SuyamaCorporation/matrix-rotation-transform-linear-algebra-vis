@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>行列変換 2D線形代数 ビジュアライザー</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-4">
+<div class="max-w-3xl mx-auto">
+  <h1 class="text-2xl font-bold text-orange-400 mb-5 text-center">📐 2D 行列変換 ビジュアライザー</h1>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <div class="bg-gray-800 rounded-xl p-5">
+      <h2 class="text-base font-semibold text-cyan-300 mb-3">変換行列 [a, b; c, d]</h2>
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <label class="text-xs text-gray-400">a = <span id="aVal">1.00</span></label>
+          <input id="slA" type="range" min="-2" max="2" step="0.05" value="1"
+            class="w-full accent-orange-400" aria-label="行列要素 a" oninput="updateMatrix()">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">b = <span id="bVal">0.00</span></label>
+          <input id="slB" type="range" min="-2" max="2" step="0.05" value="0"
+            class="w-full accent-orange-400" aria-label="行列要素 b" oninput="updateMatrix()">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">c = <span id="cVal">0.00</span></label>
+          <input id="slC" type="range" min="-2" max="2" step="0.05" value="0"
+            class="w-full accent-orange-400" aria-label="行列要素 c" oninput="updateMatrix()">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">d = <span id="dVal">1.00</span></label>
+          <input id="slD" type="range" min="-2" max="2" step="0.05" value="1"
+            class="w-full accent-orange-400" aria-label="行列要素 d" oninput="updateMatrix()">
+        </div>
+      </div>
+
+      <div class="bg-gray-900 rounded-lg p-3 font-mono text-sm mb-3 text-center">
+        <div class="text-gray-400 mb-1">M =</div>
+        <div class="text-white">
+          [ <span id="mA" class="text-orange-300">1.00</span>, <span id="mB" class="text-orange-300">0.00</span> ]<br>
+          [ <span id="mC" class="text-orange-300">0.00</span>, <span id="mD" class="text-orange-300">1.00</span> ]
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 text-xs mb-4">
+        <div class="bg-gray-900 rounded p-2">
+          <div class="text-gray-400">行列式 det(M)</div>
+          <div id="det" class="text-yellow-300 font-bold text-base">1.00</div>
+        </div>
+        <div class="bg-gray-900 rounded p-2">
+          <div class="text-gray-400">トレース tr(M)</div>
+          <div id="trace" class="text-blue-300 font-bold text-base">2.00</div>
+        </div>
+        <div class="bg-gray-900 rounded p-2 col-span-2">
+          <div class="text-gray-400">固有値（実数のみ）</div>
+          <div id="eigenvals" class="text-green-300 font-bold">λ1=1.00, λ2=1.00</div>
+        </div>
+      </div>
+
+      <div class="text-xs text-gray-400 mb-2">プリセット</div>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="setPreset(0.707,-0.707,0.707,0.707)" class="bg-gray-700 hover:bg-gray-600 text-xs px-2 py-1.5 rounded" aria-label="45度回転">45° 回転</button>
+        <button onclick="setPreset(2,0,0,2)" class="bg-gray-700 hover:bg-gray-600 text-xs px-2 py-1.5 rounded" aria-label="2倍スケール">2× スケール</button>
+        <button onclick="setPreset(1,1,0,1)" class="bg-gray-700 hover:bg-gray-600 text-xs px-2 py-1.5 rounded" aria-label="水平せん断">水平せん断</button>
+        <button onclick="setPreset(1,0,0,-1)" class="bg-gray-700 hover:bg-gray-600 text-xs px-2 py-1.5 rounded" aria-label="X軸反射">X軸反射</button>
+        <button onclick="setPreset(-1,0,0,1)" class="bg-gray-700 hover:bg-gray-600 text-xs px-2 py-1.5 rounded" aria-label="Y軸反射">Y軸反射</button>
+        <button onclick="setPreset(1,0,0,1)" class="bg-gray-700 hover:bg-gray-600 text-xs px-2 py-1.5 rounded" aria-label="単位行列（リセット）">単位行列</button>
+      </div>
+    </div>
+
+    <div class="bg-gray-800 rounded-xl p-3">
+      <h2 class="text-base font-semibold text-cyan-300 mb-2">ビジュアル</h2>
+      <canvas id="vis" width="300" height="300" class="rounded bg-gray-950 w-full" aria-label="行列変換ビジュアライザー"></canvas>
+      <div class="mt-2 text-xs flex gap-3 flex-wrap">
+        <span><span class="inline-block w-3 h-3 rounded bg-gray-500 mr-1"></span>元の正方形</span>
+        <span><span class="inline-block w-3 h-3 rounded bg-orange-500 mr-1"></span>変換後</span>
+        <span><span class="inline-block w-3 h-3 rounded bg-red-500 mr-1"></span>e₁</span>
+        <span><span class="inline-block w-3 h-3 rounded bg-blue-500 mr-1"></span>e₂</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('vis');
+const ctx = canvas.getContext('2d');
+const W = 300, H = 300, CX = W/2, CY = H/2, SCALE = 70;
+
+function getMatrix() {
+  return [
+    parseFloat(document.getElementById('slA').value),
+    parseFloat(document.getElementById('slB').value),
+    parseFloat(document.getElementById('slC').value),
+    parseFloat(document.getElementById('slD').value)
+  ];
+}
+
+function toScreen(x, y) {
+  return [CX + x * SCALE, CY - y * SCALE];
+}
+
+function applyMatrix(a, b, c, d, x, y) {
+  return [a*x + b*y, c*x + d*y];
+}
+
+function drawArrow(x1, y1, x2, y2, color, width=2) {
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  const angle = Math.atan2(y2-y1, x2-x1);
+  const len = 8;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - len*Math.cos(angle-0.4), y2 - len*Math.sin(angle-0.4));
+  ctx.lineTo(x2 - len*Math.cos(angle+0.4), y2 - len*Math.sin(angle+0.4));
+  ctx.closePath();
+  ctx.fill();
+}
+
+function draw() {
+  const [a,b,c,d] = getMatrix();
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = '#1f2937';
+  ctx.lineWidth = 1;
+  for (let i = -4; i <= 4; i++) {
+    ctx.beginPath(); ctx.moveTo(...toScreen(i,-4)); ctx.lineTo(...toScreen(i,4)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(...toScreen(-4,i)); ctx.lineTo(...toScreen(4,i)); ctx.stroke();
+  }
+
+  // Axes
+  ctx.strokeStyle = '#374151'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(...toScreen(-4,0)); ctx.lineTo(...toScreen(4,0)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(...toScreen(0,-4)); ctx.lineTo(...toScreen(0,4)); ctx.stroke();
+
+  // Original square
+  const sq = [[0,0],[1,0],[1,1],[0,1]];
+  ctx.strokeStyle = 'rgba(107,114,128,0.6)';
+  ctx.fillStyle = 'rgba(107,114,128,0.1)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  sq.forEach((p,i) => {
+    const [sx,sy] = toScreen(p[0],p[1]);
+    if(i===0) ctx.moveTo(sx,sy); else ctx.lineTo(sx,sy);
+  });
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+
+  // Transformed square
+  const tsq = sq.map(([x,y]) => applyMatrix(a,b,c,d,x,y));
+  ctx.strokeStyle = '#f97316';
+  ctx.fillStyle = 'rgba(249,115,22,0.15)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  tsq.forEach((p,i) => {
+    const [sx,sy] = toScreen(p[0],p[1]);
+    if(i===0) ctx.moveTo(sx,sy); else ctx.lineTo(sx,sy);
+  });
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+
+  // Standard basis vectors (original)
+  const [ox,oy] = toScreen(0,0);
+  drawArrow(ox, oy, ...toScreen(1,0), 'rgba(239,68,68,0.5)', 1.5);
+  drawArrow(ox, oy, ...toScreen(0,1), 'rgba(59,130,246,0.5)', 1.5);
+
+  // Transformed basis vectors
+  const [te1x, te1y] = applyMatrix(a,b,c,d,1,0);
+  const [te2x, te2y] = applyMatrix(a,b,c,d,0,1);
+  drawArrow(ox, oy, ...toScreen(te1x,te1y), '#ef4444', 2.5);
+  drawArrow(ox, oy, ...toScreen(te2x,te2y), '#3b82f6', 2.5);
+
+  // Labels
+  ctx.font = 'bold 11px monospace';
+  ctx.fillStyle = '#ef4444';
+  ctx.fillText('e₁', ...toScreen(te1x+0.1, te1y+0.1));
+  ctx.fillStyle = '#3b82f6';
+  ctx.fillText('e₂', ...toScreen(te2x+0.1, te2y+0.1));
+}
+
+function updateMatrix() {
+  const [a,b,c,d] = getMatrix();
+  ['A','B','C','D'].forEach((k,i) => {
+    const v = [a,b,c,d][i];
+    document.getElementById('sl'+k).value = v;
+    document.getElementById(k.toLowerCase()+'Val').textContent = v.toFixed(2);
+    document.getElementById('m'+k).textContent = v.toFixed(2);
+  });
+
+  const det = a*d - b*c;
+  const tr = a + d;
+  document.getElementById('det').textContent = det.toFixed(2);
+  document.getElementById('trace').textContent = tr.toFixed(2);
+
+  const disc = (tr*tr/4) - det;
+  if (disc >= 0) {
+    const l1 = tr/2 + Math.sqrt(disc);
+    const l2 = tr/2 - Math.sqrt(disc);
+    document.getElementById('eigenvals').textContent = `λ1=${l1.toFixed(2)}, λ2=${l2.toFixed(2)}`;
+  } else {
+    const re = tr/2;
+    const im = Math.sqrt(-disc);
+    document.getElementById('eigenvals').textContent = `${re.toFixed(2)}±${im.toFixed(2)}i (複素数)`;
+  }
+
+  draw();
+}
+
+function setPreset(a, b, c, d) {
+  document.getElementById('slA').value = a;
+  document.getElementById('slB').value = b;
+  document.getElementById('slC').value = c;
+  document.getElementById('slD').value = d;
+  updateMatrix();
+}
+
+updateMatrix();
+</script>
+</body>
+</html>
